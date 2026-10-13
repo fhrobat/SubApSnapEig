@@ -170,7 +170,7 @@ for i = 1:length(opts.param)
         if (res_nums / res_dens) > opts.tol
             mat_now = Afull(p_now);
             V_m = Q * X_n;
-            true_res = norm(mat_now * V_m - V_m * diag(L_n), 'fro') / norm(mat_now, 1);
+            true_res = norm(mat_now * V_m - V_m * L_n, 'fro') / norm(mat_now, 1);
             
             if ~is_matrix_free
                 cached_params(end+1) = p_now;
