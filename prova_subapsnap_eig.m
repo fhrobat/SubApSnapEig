@@ -4,8 +4,8 @@ clear
 %% Exponential Problem Setup
 % N = 2*10^6;                             % Problem dimension
 % L = 1;                                  % Domain length/parameter
-% Afull =@(p) -N^2 * exp_full(p, L, N);   % Full matrix handle
-% Arows =@(p,rows,M) -N^2 * exp_rows(p, L, N, rows)*M; % Row-sampled matrix handle
+% Afull =@(p) -exp_full(p, L, N);   % Full matrix handle
+% Arows =@(p,rows,M) -exp_rows(p, L, N, rows)*M; % Row-sampled matrix handle
 % neig  = 1;                              % Number of eigenvalues to compute
 % param = logspace(-1,0,3000)';           % Parameter space grid
 % IsFunctionSymmetric = 1;                % Symmetry flag
@@ -231,7 +231,7 @@ warning on;
 disp('--- PHASE 1: LU Method ---');
 opts.sampling = 'lu';
 % [eigvec_lu, eigval_lu, t_on_lu, t_off_lu] = SubApSnap_eig(Afull, Arows, n, opts);
-[eigvec_lu, eigval_lu, t_on_lu, t_off_lu] = SubApSnap_eig(Amult, Arows, n, opts);
+[eigvec_lu, eigval_lu, t_on_lu, t_off_lu] = SubApSnap_eig(Amult, Arows, n, opts); %%This is for PageRank only, otherwise uncomment previous line and comment this one
 % [eigvec_lu, eigval_lu, t_on_lu, t_off_lu] = SubApSnap_Affine_eig(A0, A1, n, opts);
 time_lu = t_on_lu + t_off_lu;
 
@@ -270,7 +270,7 @@ clear eigvec_lu eigval_lu V_m lam_m A_p; % Memory release for LU variant
 disp('--- PHASE 2: Leverage Method ---');
 opts.sampling = 'leverage';
 % [eigvec_lev, eigval_lev, t_on_lev, t_off_lev] = SubApSnap_eig(Afull, Arows, n, opts);
-[eigvec_lev, eigval_lev, t_on_lev, t_off_lev] = SubApSnap_eig(Amult, Arows, n, opts);
+[eigvec_lev, eigval_lev, t_on_lev, t_off_lev] = SubApSnap_eig(Amult, Arows, n, opts); %%This is for PageRank only, otherwise uncomment previous line and comment this one
 % [eigvec_lev, eigval_lev, t_on_lev, t_off_lev] = SubApSnap_Affine_eig(A0, A1, n, opts);
 time_lev = t_on_lev + t_off_lev;
 
@@ -309,7 +309,7 @@ clear eigvec_lev eigval_lev V_m lam_m A_p; % Memory release for Leverage variant
 %% PHASE 3: POD Method
 disp('--- PHASE 3: POD Method ---');
 % [eigevec_pod, eigeval_pod, t_on_pod, t_off_pod] = ApSnap_eig(Afull, n, opts);
-[eigevec_pod, eigeval_pod, t_on_pod, t_off_pod] = ApSnap_eig(Amult, n, opts);
+[eigevec_pod, eigeval_pod, t_on_pod, t_off_pod] = ApSnap_eig(Amult, n, opts); %%This is for PageRank only, otherwise uncomment previous line and comment this one
 % [eigevec_pod, eigeval_pod, t_on_pod, t_off_pod] = ApSnap_Affine_eig(A0, A1, n, opts);
 time_pod = t_on_pod + t_off_pod;
 
