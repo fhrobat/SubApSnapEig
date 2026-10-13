@@ -74,8 +74,8 @@ end
 % N = 500;
 % eps = 1e-4;
 % L = 1;
-% Afull =@(p) N^4 * diff_full(p, L, N,eps);
-% Arows =@(p,rows,M) N^4 * diff_rows(p, L, N,eps, rows)*M;
+% Afull =@(p)  diff_full(p, L, N,eps);
+% Arows =@(p,rows,M)  diff_rows(p, L, N,eps, rows)*M;
 % neig = 3;
 % param = logspace(0,1,1000)';
 %%
