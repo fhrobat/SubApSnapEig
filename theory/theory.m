@@ -1,202 +1,113 @@
-clear; clc; close all;
+function theory(t_out)
+%THEORY  Experiments of Section 3 (Figures 1-3): snapshot matrix and error bounds.
+%
+%   theory(t_out) considers A(p) = M1 + 0.4 p M2, with M1, M2 the symmetric
+%   parts of two 1000 x 1000 random matrices, p in [-1,1], and its rightmost
+%   eigenvector x(p). For r = 4, ..., 30 snapshot points, equispaced or
+%   Chebyshev (p_i = cos(i pi/(r-1)), i = 0..r-1), it computes
+%     - the smallest singular value of the snapshot matrix X and the fit
+%       C sqrt(r) rho^(-r) of its decay (Figure 1);
+%     - the error ||(I - X X^+) x(t_out)||_2 at the new point t_out;
+%     - fits of the error of the form e^{-c r} and e^{-c sqrt(r)};
+%     - the bounds with the discrete measure, |prod_i (t_out - p_i)| / (rho/2)^r
+%       (Theorem 3.3), and with the limit measure (Theorem 3.4), where
+%       rho is estimated by fitting sigma_min(X_cheb) ~ C sqrt(r) rho^(-r)
+%       (Theorem 2.2).
+%   The constants in front of the fits and bounds are chosen to match the
+%   error. The results are written in theory/1000_<t_out>.tex, read by
+%   the paper: t_out = 1.008765 (outside [-1,1], Figure 2) and
+%   t_out = 0.8765 (inside, Figures 1 and 3).
 
-Nd = 1000;
-rho_max = 3.1;
+n = 1000;
+r_values = (4:30)';
 
-M_max = 30;      % Maximum number of snapshots (subspace dimension)
-%t_out = 1.00008765;
-%t_out = 0.08765;
+rng(42);
+M1 = randn(n); M1 = (M1 + M1') / 2;
+M2 = randn(n); M2 = 0.4 * (M2 + M2') / 2;
+[V, D] = eig(M1);
+[~, imax] = max(diag(D));
+ref = V(:, imax);                          % to fix the sign of the eigenvectors
+x_out = eigvec(t_out, M1, M2, ref);
 
-% 1. Problem Setup and Matrix Generation
-rng(42); 
-M1 = randn(Nd); M1 = (M1 + M1') / 2;
-M2 = randn(Nd); M2 = (M2 + M2') / 2;
-M2 = 0.4 * M2;
-
-[V, D] = eig(M1); [~, ind] = sort(diag(D), 'ComparisonMethod','real'); 
-ref_vec = V(:, ind(end)); 
-
-% Compute the target vector at the new point
-x_true = get_eigenvector(t_out, M1, M2, ref_vec);
-
-M_values = 4:M_max;
-err_equi = zeros(length(M_values), 1);
-err_cheb = zeros(length(M_values), 1);
-sing_equi = zeros(length(M_values), 1);
-sing_cheb = zeros(length(M_values), 1);
-
-omega_equi = zeros(length(M_values), 1);
-omega_cheb = zeros(length(M_values), 1);
-
-for idx = 1:length(M_values)
-    idx
-    M = M_values(idx);
-    
-    % ---------------------------------------------------------
-    % 1. Equispaced Nodal Subspace
-    % ---------------------------------------------------------
-    t_equi = linspace(-1, 1, M)';
-    X_equi = zeros(Nd, M);
-    for j = 1:M
-        X_equi(:, j) = get_eigenvector(t_equi(j), M1, M2, ref_vec);
+nr = numel(r_values);
+err_equi = zeros(nr, 1); err_cheb = zeros(nr, 1);
+sing_equi = zeros(nr, 1); sing_cheb = zeros(nr, 1);
+omega_equi = zeros(nr, 1); omega_cheb = zeros(nr, 1);
+for j = 1:nr
+    r = r_values(j);
+    for type = ["equi", "cheb"]
+        if type == "equi", pts = linspace(-1, 1, r)'; else, pts = cos((0:r-1)' * pi / (r-1)); end
+        X = zeros(n, r);
+        for i = 1:r
+            X(:, i) = eigvec(pts(i), M1, M2, ref);
+        end
+        [Q, ~] = qr(X, 0);
+        err = norm(x_out - Q * (Q' * x_out));   % ||(I - X X^+) x(t_out)||
+        smin = min(svd(X));
+        omega = abs(prod(t_out - pts));         % nodal polynomial at t_out
+        if type == "equi"
+            err_equi(j) = err; sing_equi(j) = smin; omega_equi(j) = omega;
+        else
+            err_cheb(j) = err; sing_cheb(j) = smin; omega_cheb(j) = omega;
+        end
     end
-    
-    [Q_eq, ~] = qr(X_equi, 0);
-    err_equi(idx) = norm(x_true - Q_eq * (Q_eq' * x_true));
-    sing_equi(idx) = min(svd(X_equi));
-    
-    % Compute the discrete nodal polynomial value: exp(-M * U_M(t_out)) = |Prod(t_out - t_k)|
-    omega_equi(idx) = abs(prod(t_out - t_equi));
-    
-    % ---------------------------------------------------------
-    % 2. Chebyshev Nodal Subspace
-    % ---------------------------------------------------------
-    k = 1:M;
-    t_cheb = cos((k - 1)*pi/ M)';
-    X_cheb = zeros(Nd, M);
-    for j = 1:M
-        X_cheb(:, j) = get_eigenvector(t_cheb(j), M1, M2, ref_vec);
-    end
-    
-    [Q_ch, ~] = qr(X_cheb, 0);
-    err_cheb(idx) = norm(x_true - Q_ch * (Q_ch' * x_true));
-    sing_cheb(idx) = min(svd(X_cheb));
-    
-    % Compute the discrete nodal polynomial value: exp(-M * U_M(t_out)) = |Prod(t_out - t_k)|
-    omega_cheb(idx) = abs(prod(t_out - t_cheb));
 end
 
-% semilogy(svd(X_cheb, 'econ'));
-% p_cheb_sing = polyfit((1:M_max)', log(svd(X_cheb, 'econ')), 1);
-% rate_sing_cheb = exp(p_cheb_sing(2)) * exp(p_cheb_sing(1)).^M_values;
-% exp(-p_cheb_sing(1))
+% Decay of the singular values: fit sigma_min ~ C sqrt(r) rho^(-r) (Theorem 2.2)
+c = polyfit(r_values, log(sing_cheb ./ sqrt(r_values)), 1);
+rho = exp(-c(1));
+rate_sing_cheb = sqrt(r_values) .* exp(polyval(c, r_values));
+fprintf('Estimated rho = %.4f\n', rho);
 
-valid_cheb = find(err_cheb > 1e-14);
-p_cheb_sing = polyfit(M_values(valid_cheb)', log(sing_cheb(valid_cheb)), 1);
-rate_sing_cheb = exp(p_cheb_sing(2)) * exp(p_cheb_sing(1)).^M_values;
-% rho_max = -p_cheb_sing(1)
+% Fits of the error (only where it is above machine precision)
+ok_cheb = find(err_cheb > 1e-14);
+ok_equi = find(err_equi > 1e-14);
+rate_cheb      = fit_exp(r_values, err_cheb, ok_cheb(max(1, end-10):end-6), r_values);
+rate_equi_sqr  = fit_exp(sqrt(r_values), err_equi, ok_equi(1:min(10, end)), sqrt(r_values));
+rate_equi_asym = fit_exp(r_values, err_equi, ok_equi(max(1, end-6):end), r_values);
 
-% ---------------------------------------------------------
-% Convergence Rate Fitting
-% ---------------------------------------------------------
-valid_cheb = find(err_cheb > 1e-14);
-valid_equi = find(err_equi > 1e-14);
+% Bounds with the discrete measure (Theorem 3.3), scaled to the error
+th_cheb_scaled_discrete = scale(omega_cheb ./ (rho/2).^r_values, err_cheb, 10);
+th_equi_scaled_discrete = scale(omega_equi ./ (rho/2).^r_values, err_equi, 20);
 
-% Chebyshev fit (Pure Exponential Decay O(r^M))
-late_cheb = valid_cheb(max(1, end-10): (end-6));
-p_cheb = polyfit(M_values(late_cheb)', log(err_cheb(late_cheb)), 1);
-rate_cheb = exp(p_cheb(2)) * exp(p_cheb(1)).^M_values;
-
-% Equispaced fit - Phase 1: Latency/Stagnation O(exp(-c*sqrt(M)))
-early_equi = valid_equi(1:min(10, length(valid_equi)));
-p_sqr = polyfit(sqrt(M_values(early_equi))', log(err_equi(early_equi)), 1);
-rate_equi_sqr = exp(p_sqr(2)) * exp(p_sqr(1)).^sqrt(M_values);
-
-% Equispaced fit - Phase 2: Asymptotic Exponential Decay O(r_2^M)
-late_equi = valid_equi(max(1, end-6):end);
-p_eq_asym = polyfit(M_values(late_equi)', log(err_equi(late_equi)), 1);
-rate_equi_asym = exp(p_eq_asym(2)) * exp(p_eq_asym(1)).^M_values;
-
-% ---------------------------------------------------------
-% THEORETICAL CALCULATIONS 1: Nodal Polynomials (Discrete Bounds)
-% ---------------------------------------------------------
-denom_factor = (rho_max/2) .^ M_values';
-full_th_rate_cheb = omega_cheb ./ denom_factor;
-full_th_rate_equi = omega_equi ./ denom_factor;
-
-% Scaling factors to align theoretical bounds with empirical error plots
-th_cheb_scaled_discrete = full_th_rate_cheb * (err_cheb(10) / full_th_rate_cheb(10));
-th_equi_scaled_discrete = full_th_rate_equi * (err_equi(20) / full_th_rate_equi(20));
-
-% ---------------------------------------------------------
-% THEORETICAL CALCULATIONS 2: A Priori Bounds (Continuous Theorem)
-% ---------------------------------------------------------
-if t_out >= -1 && t_out <= 1
-    % --- INTERPOLATION Formulas ---
-    
-    base_cheb = 1 / rho_max;
-    
-    % Equispaced: Exact spatially varying formula (based on custom theorem)
-    % U_unif = 1 - 0.5*[(1+x)log(1+x) + (1-x)log(1-x)]
-    term_1 = (t_out + 1)^((t_out + 1)/2);
-    term_2 = (1 - t_out)^((1 - t_out)/2);
-    base_equi = (2 / (exp(1) * rho_max)) * term_1 * term_2;
-    
+% Asymptotic rates with the limit measure (Theorem 3.4), scaled to the error
+if abs(t_out) <= 1
+    base_cheb = 1 / rho;
+    base_equi = 2 / (exp(1) * rho) * (1 + t_out)^((1 + t_out)/2) * (1 - t_out)^((1 - t_out)/2);
 else
-    % --- EXTRAPOLATION Formulas ---
-    
-    base_cheb = abs(t_out + sqrt(t_out^2 - 1)) / rho_max;
-    
-    t_abs = abs(t_out); % Extended via symmetry for t_out < -1
-    term_num = (t_abs + 1)^((t_abs + 1)/2);
-    term_den = (t_abs - 1)^((t_abs - 1)/2);
-    base_equi = (2 / (exp(1) * rho_max)) * (term_num / term_den);
+    t = abs(t_out);
+    base_cheb = (t + sqrt(t^2 - 1)) / rho;
+    base_equi = 2 / (exp(1) * rho) * (t + 1)^((t + 1)/2) / (t - 1)^((t - 1)/2);
+end
+th_cheb_scaled_apriori = scale(base_cheb.^r_values, err_cheb, 10);
+th_equi_scaled_apriori = scale(base_equi.^r_values, err_equi, nr - 5);
+
+T = table(err_equi, err_cheb, sing_equi, sing_cheb, rate_cheb, rate_equi_sqr, ...
+          rate_equi_asym, th_cheb_scaled_discrete, th_equi_scaled_discrete, ...
+          th_cheb_scaled_apriori, th_equi_scaled_apriori, rate_sing_cheb);
+file = fullfile(fileparts(mfilename('fullpath')), sprintf('%d_%.10g.tex', n, t_out));
+writetable(T, file, 'Delimiter', '\t', 'FileType', 'text');
+fprintf('Written %s\n', file);
 end
 
-apriori_rate_cheb = base_cheb .^ M_values';
-apriori_rate_equi = base_equi .^ M_values';
-% Scaling factors to align theoretical bounds with empirical error plots
-th_cheb_scaled_apriori = apriori_rate_cheb * (err_cheb(10) / apriori_rate_cheb(10));
-th_equi_scaled_apriori = apriori_rate_equi * (err_equi(max(1, end-5)) / apriori_rate_equi(max(1, end-5))); % Aligns to the tail
+
+function x = eigvec(t, M1, M2, ref)
+% Rightmost eigenvector of M1 + t M2, with the sign fixed by ref.
+[V, D] = eig(M1 + t * M2);
+[~, imax] = max(diag(D));
+x = V(:, imax);
+if x' * ref < 0, x = -x; end
+end
 
 
-% ---------------------------------------------------------
-% Plot 1: Subspace Error vs Discrete Nodal Polynomial
-% ---------------------------------------------------------
-figure(2)
-semilogy(M_values, err_cheb, 's-b', 'LineWidth', 2, 'MarkerFaceColor', 'b', 'DisplayName', 'Errore X_{cheb}'); hold on;
-semilogy(M_values, err_equi, 'o-r', 'LineWidth', 2, 'MarkerFaceColor', 'r', 'DisplayName', 'Errore X_{equi}');
+function y = fit_exp(s, err, sel, s_eval)
+% Least-squares fit log(err) ~ a + b s on the entries sel, evaluated at s_eval.
+c = polyfit(s(sel), log(err(sel)), 1);
+y = exp(polyval(c, s_eval));
+end
 
-semilogy(M_values, rate_cheb, '--k', 'LineWidth', 1.5, 'DisplayName', 'Fit Cheb O(e^{-c_1 M})');
-semilogy(M_values, rate_equi_sqr, '--m', 'LineWidth', 2, 'DisplayName', 'Fit Equi Latenza O(e^{-c_2 \surd{M}})');
-semilogy(M_values, rate_equi_asym, '-.k', 'LineWidth', 1.5, 'DisplayName', 'Fit Equi Asintotico O(e^{-c_3 M})');
 
-semilogy(M_values, th_cheb_scaled_discrete, ':c', 'LineWidth', 2.5, 'DisplayName', 'Bound Discreto \Omega_M Cheb');
-semilogy(M_values, th_equi_scaled_discrete, ':y', 'LineWidth', 2.5, 'DisplayName', 'Bound Discreto \Omega_M Equi');
-
-title(sprintf('Verifica Discreta: Errore vs Polinomio Nodale (t_{out} = %.4f)', t_out));
-xlabel('Dimensione del Sottospazio (M)');
-ylabel('Errore ||(I - XX^\dagger) x_{true}||_2');
-ylim([1e-16, 10]);
-grid on; 
-legend('Location', 'southwest', 'FontSize', 10);
-
-% ---------------------------------------------------------
-% Plot 2 (NEW): Subspace Error vs Continuous A Priori Bounds
-% ---------------------------------------------------------
-figure(3)
-semilogy(M_values, err_cheb, 's-b', 'LineWidth', 2, 'MarkerFaceColor', 'b', 'DisplayName', 'Errore X_{cheb}'); hold on;
-semilogy(M_values, err_equi, 'o-r', 'LineWidth', 2, 'MarkerFaceColor', 'r', 'DisplayName', 'Errore X_{equi}');
-
-semilogy(M_values, th_cheb_scaled_apriori, '--c', 'LineWidth', 2.5, 'DisplayName', 'Teorema A Priori Cheb');
-semilogy(M_values, th_equi_scaled_apriori, '--y', 'LineWidth', 2.5, 'DisplayName', 'Teorema A Priori Equi');
-
-title(sprintf('Verifica Continua: Errore vs Limiti A Priori del Teorema (t_{out} = %.4f)', t_out));
-xlabel('Dimensione del Sottospazio (M)');
-ylabel('Errore ||(I - XX^\dagger) x_{true}||_2');
-ylim([1e-16, 10]);
-grid on; 
-legend('Location', 'southwest', 'FontSize', 10);
-
-% ---------------------------------------------------------
-% Plot 3: Conditioning / Minimum Singular Values Decay
-% ---------------------------------------------------------
-figure(4)
-semilogy(M_values, sing_cheb, 's-b', 'LineWidth', 1.5, 'DisplayName', '\sigma_{min} X_{cheb}'); hold on;
-semilogy(M_values, sing_equi, 'o-r', 'LineWidth', 1.5, 'DisplayName', '\sigma_{min} X_{equi}');
-%semilogy(M_values, rate_sing_cheb, '--k', 'LineWidth', 1.5, 'DisplayName', 'rate \sigma_{min} X_{cheb}');
-semilogy(M_values, 2*rho_max/(1- rho_max^(-1)) .* sqrt(M_values).*rho_max.^(-M_values), '--k', 'LineWidth', 1.5, 'DisplayName', 'rate \sigma_{min} X_{cheb}');
-title('Decadimento del Valore Singolare Minimo (Condizionamento Base)');
-xlabel('Numero di Snapshot (M)');
-ylabel('\sigma_{min}');
-grid on; legend('Location', 'southwest');
-
-% --- Auxiliary Function ---
-function eigvec = get_eigenvector(t, M1, M2, ref_vec)
-    [V, D] = eig(M1 + t * M2);
-    [~, ind] = sort(diag(D), 'ComparisonMethod','real'); 
-    eigvec = V(:, ind(end));
-    
-    % Enforce sign consistency with the reference vector
-    if dot(eigvec, ref_vec) < 0, eigvec = -eigvec; end
+function y = scale(bound, err, j)
+% Multiply the bound by the constant that makes it equal to err at index j.
+y = bound * (err(j) / bound(j));
 end
