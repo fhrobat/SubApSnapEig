@@ -56,6 +56,8 @@ Each call runs `SubApSnapEig` with LU (`LU`) and leverage-score (`Leverage`) row
 NTHREADS=8 MATLAB=/path/to/matlab ./run_all.sh
 ```
 
+The results reported in the paper are in `results/nightcrawler_2026-11-17/` (MATLAB R2025a, Intel Xeon Gold 6548Y+, 16 threads): the `.dat` files read by the paper, the MATLAB output and the load of the machine during every run, and the data of Figures 1–3 (`theory/`); see `summary.md` there for the table of the computational times.
+
 **Example 1: Exponential differential operator.** Smallest eigenvalue of the 3-point finite-difference discretization of $-\frac{d}{dx}\big(e^{px}\frac{du}{dx}\big)$ on $[-1,1]$ with zero boundary conditions (without the factor $1/h^2$). $n \approx 2\times 10^6$; 3000 log-spaced parameters in $[0.1, 1]$; 10 log-spaced snapshot points.
 
 **Example 2: Differential operator with multiple eigenvalues.** The 3 smallest eigenvalues of the 5-point finite-difference discretization of $-p\,\Delta u - \nabla(\nabla\cdot u)$ on $[-1,1]^2$ with zero boundary conditions (without the factor $1/h^2$). The second smallest eigenvalue has multiplicity 2. A $498\times 498$ interior grid for each component gives $n = 496\,008$; 1000 log-spaced parameters in $[10^{-4}, 10^{-3}]$; 10 log-spaced snapshot points.
@@ -66,10 +68,12 @@ NTHREADS=8 MATLAB=/path/to/matlab ./run_all.sh
 
 **Example 5: Graph eigenvector centrality.** Leading eigenpair of $A(p) = D(p)\,A_0\,D(p)$, where $A_0$ is the adjacency matrix of `coAuthorsDBLP` ($n = 299\,067$). $D(p)$ is diagonal with entries $1 + 0.5\sin(2\pi p/1000 + \Phi_i)$ and random phases $\Phi_i$. Parameters $p = 1,\dots,1000$; 20 snapshot points at the start of the parameter range. This is the time-dependent case: the snapshot matrix and the row selection are updated every 100 steps.
 
-**Example 6: Transformer attention (SVD).** Leading singular value and vectors of the attention matrix $\mathrm{softmax}\big(Q(p)K(p)^T/\sqrt{64}\big)$, where $Q(p), K(p)$ are the query and key matrices (after rotary embedding) of the 4th head of the 22nd (last) layer of ModernBERT-base (indices `3` and `21` in `train_modernbert.py`, which are 0-based), during fine-tuning on the SCOTUS subset of LexGLUE. The parameter $p$ is the training step in the last (fourth) epoch, with 563 steps; the first 50 steps are used as snapshots. To reproduce:
+**Example 6: Transformer attention (SVD).** Leading singular value and vectors of the attention matrix $\mathrm{softmax}\big(Q(p)K(p)^T/\sqrt{64}\big)$, where $Q(p), K(p)$ are the query and key matrices (after rotary embedding) of the 4th head of the 22nd (last) layer of ModernBERT-base (indices `3` and `21` in `train_modernbert.py`, which are 0-based), during fine-tuning on the SCOTUS subset of LexGLUE. The parameter $p$ is the training step in the last (fourth) epoch, with 563 steps; the first 50 steps are used as snapshots.
+
+The query and key matrices used in the paper are available on Zenodo, https://doi.org/10.5281/zenodo.24345651 (`SubApSnapEig_Ex6_matrices.zip`, 1.6 GB): unzip the archive in `python/`, so that the files are in `python/matrici_matlab_dirette_rope/`, and run `run_experiment_svd`. To generate them again:
 
 1. Run `train_modernbert.py` (requires `torch`, `transformers`, `datasets`, `evaluate`, `scipy`). It fine-tunes the model and saves the projected query/key matrices for a fixed 5000-token document at every step in `matrici_matlab_dirette_rope/`.
-2. Move that folder to `python/` and run `run_experiment_svd`.
+2. Move that folder to `python/`, run `python/convert.m` in it (it converts the $1\times 5000\times 64$ single-precision arrays saved by Python to $5000\times 64$ double-precision matrices), and run `run_experiment_svd`.
 
 ## Requirements
 

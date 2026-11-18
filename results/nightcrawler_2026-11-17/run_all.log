@@ -1,0 +1,17 @@
+2026-11-17 11:51:59  start exponential (NTHREADS=16)
+2026-11-17 12:09:29  end exponential
+2026-11-17 12:09:29  start differential (NTHREADS=16)
+2026-11-17 12:54:35  end differential
+2026-11-17 12:54:35  start pagerank (NTHREADS=16)
+2026-11-17 13:03:34  end pagerank
+2026-11-17 13:03:34  load 9.52 > 4, waiting before kernel
+2026-11-17 13:04:34  start kernel (NTHREADS=16)
+2026-11-17 13:20:58  end kernel
+2026-11-17 13:20:58  start graph (NTHREADS=16)
+2026-11-17 13:25:39  end graph
+2026-11-17 13:25:39  load 14.96 > 4, waiting before transformer
+2026-11-17 13:26:39  load 6.12 > 4, waiting before transformer
+2026-11-17 13:27:39  load 4.59 > 4, waiting before transformer
+2026-11-17 13:28:39  load 4.21 > 4, waiting before transformer
+2026-11-17 13:29:39  start transformer (NTHREADS=16)
+2026-11-17 13:43:30  end transformer

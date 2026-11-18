@@ -1,0 +1,6 @@
+host: nightcrawler.maths.ox.ac.uk
+CPU: INTEL(R) XEON(R) GOLD 6548Y+, 128 threads
+memory: 2015 GB
+OS: Ubuntu 24.04.5 LTS
+MATLAB: 25.1.0.2943329 (R2025a)
+run: ./run_all.sh with NTHREADS=16, MAXLOAD=4, 2026-11-17
